@@ -1,6 +1,37 @@
 #__author__ = 'Zhihua Zhang'
 #-*- coding: utf-8 -*-
-import nltk, collections, re, math, copy, numpy
+import nltk, codecs, collections, re, math, copy, numpy, pickle
+
+
+
+def load_vector(fname, dic_word): #dic_word:{profession:分词}	fname: word vector
+	set_word = set(" ".join(dic_word.values()).split(" "))
+	print "ALL WORD SIZE: ", len(set_word)
+	dic_subword = {}
+	fvector = codecs.open(fname, encoding = "utf-8")
+	header = fvector.readline()
+	vocab_size, dimension = map(int, header.split())
+	for line in fvector:
+		line = line.strip().split()
+		if line[0] not in set_word:
+			continue
+		vector = numpy.asarray(map(float, line[1:]))
+		dic_subword[line[0]] = vector
+	print "INCLUDE: ", len(dic_subword)
+	count = 0
+	for t in dic_word:
+		vector = sum([dic_subword[w] for w in dic_word[t].split() if w in dic_subword])
+		try:
+			dic_word[t] = vector / math.sqrt(vector.dot(vector))
+		except:
+			count += 1
+			dic_word[t] = numpy.zeros(300)
+	pickle.dump(dic_word, open("profession_w2v.pickle", "wb"))
+	print "NONE INCLUDE: ", count
+ 	return dic_word
+
+def cosine(v1, v2):
+	return v1.dot(v2)
 
 
 def cosine_similarity(feature1, feature2):
@@ -26,10 +57,7 @@ def CalcuIDF(sentences, dic_words):
 	for word in dic_IDF:
 		dic_IDF[word] = math.log(length / dic_IDF[word], 2)
 	return dic_IDF
-def Combine1(dic1, dic2):
-	# dic3 = collections.defaultdict(float)
-	# for t in dic1:
-	# 	dic3[t] = dic1[t]
+def Combine(dic1, dic2):
 	dic3 = copy.deepcopy(dic1)
 	print len(dic1)
 	for t in dic2:
