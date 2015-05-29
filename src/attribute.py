@@ -1,5 +1,5 @@
 # -*- coding: gbk -*-
-import re
+import re, codecs
 from profession_similarity import *
 import utils, re, json, pickle
 from bagofwords import *
@@ -7,10 +7,12 @@ from bagofwords import *
 
 FPROFESSION = []
 FDETAIL = []
+dic_profession = {}
 def load_detail():
 	global FPROFESSION
 	global FDETAIL
-	ff = open("detail_profession.token")
+	global dic_profession
+	ff = codecs.open("detail_profession.token", encoding = "gbk")
 	count = 0
 	for line in ff:
 		line = line.strip().split("\t")
@@ -18,10 +20,11 @@ def load_detail():
 		# 	print "WRONG!!!", line[0]; break
 		temp = re.sub("\s+", "", line[0].strip())
 		FPROFESSION.append(temp)
+		dic_profession[temp] = line[0]
 		FDETAIL.append("\t".join(line[1:]).strip())
 
-# load_detail()
-# stopwords = utils.GetStopwords(FDETAIL)
+load_detail()
+stopwords = utils.GetStopwords(FDETAIL)
 
 def similarity_KL():
 	profession = {}
@@ -32,7 +35,7 @@ def similarity_KL():
 		print FPROFESSION[i].strip(), ":"
 		similaritys = {}
 		for j in range(len(FPROFESSION)):
-	 		if i == j: continue
+			if i == j: continue
 			dic_c = Combine(profession[FPROFESSION[i].strip()], profession[FPROFESSION[j].strip()])
 			similaritys[FPROFESSION[j].strip()] = CalKL(profession[FPROFESSION[i].strip()], dic_c)
 		sort = sorted(similaritys.iteritems(), key = lambda d:d[1], reverse = True)
@@ -41,25 +44,12 @@ def similarity_KL():
 		print
 # similarity_KL()
 def similarity_cosine():
-	# profession = {}
-	# for i in range(len(FPROFESSION)):
-	# 	profession[FPROFESSION[i].strip()] = CalcuP(FDETAIL[i].strip(), {})
-	# wordlist = utils.GetWords(FDETAIL)
-	# dic_IDF = CalcuIDF(FDETAIL, wordlist)
-	# for i in range(len(FPROFESSION)):
-	# 	print i,
-	# 	temp = CalcuTI(profession[FPROFESSION[i].strip()], dic_IDF)
-	# 	profession[FPROFESSION[i].strip()] = temp
-	# pickle.dump(profession, open("T1.pickle", "wb"))
-	# fout1 = open("ttt1", "w")
 	profession = pickle.load(open("T1.pickle", "rb"))
 	for i in range(len(FPROFESSION)):
 		print FPROFESSION[i].strip(), ":",
 		similaritys = {}
 		for j in range(len(FPROFESSION)):
-	 		if i == j: continue
-			# print len(profession[FPROFESSION[i].strip()])
-			# unigram = Combine1(profession[FPROFESSION[i].strip()], profession[FPROFESSION[j].strip()]).keys()
+			if i == j: continue
 			unigram = list(set(profession[FPROFESSION[i].strip()].keys()).union(set(profession[FPROFESSION[j].strip()].keys())))
 			feature1 = [0] * len(unigram); feature2 = [0] * len(unigram)
 			for index, word in enumerate(unigram):
@@ -73,7 +63,23 @@ def similarity_cosine():
 			print p, K, "--",
 		print
 
-# similarity_cosine()
+print dic_profession.keys()[0]
+def similarity_w2v_cosine():
+#	dic_word = load_vector("../../dataset/LDC2009T14_T_C/data/xin_all.vector", dic_profession)
+	dic_word = pickle.load(open("profession_w2v.pickle", "rb"))
+	for word in dic_word:
+		similarity = {}
+		for word1 in dic_word:
+			if word == word1:
+				continue
+			similarity[word1] = cosine(dic_word[word], dic_word[word1])
+		sort = sorted(similarity.iteritems(), key = lambda d:d[1], reverse = True)
+		print word,
+		for p, K in sort[: 10]:
+			print p, K, "--",
+		print
+
+similarity_w2v_cosine()
 
 class attribute:
 	def __init__ (self):
@@ -172,7 +178,7 @@ def similarity_Profession(attr1, attr2): # 返回两人职业的最高相似度和最低相似度
 		for index, word in enumerate(unigram):
 			if word in TFIDF_PROFESSION[pro1]:
 				feature1[index] = TFIDF_PROFESSION[pro1][word]
-			if word in TFIDF_PROFESSION[pro2]
+			if word in TFIDF_PROFESSION[pro2]:
 				feature2[index] = TFIDF_PROFESSION[pro2][word]
 		cosine.append(cosine_similarity(feature1, feature2))
 		print cosine[-1]
