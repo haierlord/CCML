@@ -1,4 +1,4 @@
-# -*- coding: gbk -*-
+# -*- coding: utf-8 -*-
 import re, codecs
 from profession_similarity import *
 import utils, re, json, pickle
@@ -20,11 +20,11 @@ def load_detail():
 		# 	print "WRONG!!!", line[0]; break
 		temp = re.sub("\s+", "", line[0].strip())
 		FPROFESSION.append(temp)
-		dic_profession[temp] = line[0]
+		# dic_profession[temp] = line[0]
 		FDETAIL.append("\t".join(line[1:]).strip())
 
-load_detail()
-stopwords = utils.GetStopwords(FDETAIL)
+# load_detail()
+# stopwords = utils.GetStopwords(FDETAIL)
 
 def similarity_KL():
 	profession = {}
@@ -42,7 +42,7 @@ def similarity_KL():
 		for p, K in sort[: 10]:
 			print p, K, "--",
 		print
-# similarity_KL()
+
 def similarity_cosine():
 	profession = pickle.load(open("T1.pickle", "rb"))
 	for i in range(len(FPROFESSION)):
@@ -63,10 +63,9 @@ def similarity_cosine():
 			print p, K, "--",
 		print
 
-print dic_profession.keys()[0]
 def similarity_w2v_cosine():
 #	dic_word = load_vector("../../dataset/LDC2009T14_T_C/data/xin_all.vector", dic_profession)
-	dic_word = pickle.load(open("profession_w2v.pickle", "rb"))
+	dic_word = pickle.load(open("../data/profession/profession_w2v.pickle", "rb"))
 	for word in dic_word:
 		similarity = {}
 		for word1 in dic_word:
@@ -74,12 +73,10 @@ def similarity_w2v_cosine():
 				continue
 			similarity[word1] = cosine(dic_word[word], dic_word[word1])
 		sort = sorted(similarity.iteritems(), key = lambda d:d[1], reverse = True)
-		print word,
+		print word.encode("gbk"),
 		for p, K in sort[: 10]:
-			print p, K, "--",
+			print p.encode("gbk"), K, "--",
 		print
-
-similarity_w2v_cosine()
 
 class attribute:
 	def __init__ (self):
@@ -98,7 +95,7 @@ class attribute:
 		self.name = name
 
 	def setProfession(self, pro):
-		pro = re.sub(",|£¬", " ", pro)
+		pro = re.sub(",|ï¼Œ", " ", pro)
 		self.profession = re.sub("\s+", " ", pro).strip().split()
 
 	def setBirthPlace(self, birthPlace):
@@ -109,7 +106,7 @@ class attribute:
 		self.weight = int(weight.split(".")[0])
 
 	def setGender(self, gender):
-		if gender == "ÄĞ" or gender == "0":
+		if gender == "ç”·" or gender == "0":
 			self.gender = 0
 		else:
 			self.gender = 1
@@ -141,20 +138,59 @@ class attribute:
 				deathDate.append(1)
 		self.deathDate = deathDate
 
+address = json.load(open("../data/address/address.json"))
 
-def is_same_Country(place1, place2): # ÊÇ·ñÊÇÍ¬Ò»¸ö¹ú¼Ò
-	return 1
+# æ˜¯å¦æ˜¯åŒä¸€ä¸ªå›½å®¶ OK
+def is_same_Country(place1, place2):
+	if place1 == place2: return 1
+	place10 = place1.split(); place20 = place2.split()
+	for t in place10:
+		for t1 in place20:
+			if t in address and t1 in address:
+				return 1
+			if t in place2 or t1 in place1:
+				return 1
+	return 0
 
-def is_same_Province(place1, place2): # ÊÇ·ñÊÇÍ¬Ò»¸öÊ¡
-	return 1
+# æ˜¯å¦æ˜¯åŒä¸€ä¸ªçœ OK
+def is_same_Province(place1, place2):
+	place1 = place1.split(); place2 = place2.split()
+	for t in place1:
+		for t1 in place2:
+			try:
+				if address[t] == address[t1]:
+					return 1
+			except:
+				continue
+	return 0
 
-def is_same_Firstname(attr1, attr2): # ·µ»ØÃû×ÖÊÇ·ñÒ»ÖÂ
-	return 1
+# è¿”å›åå­—æ˜¯å¦ä¸€è‡´ OK
+def is_same_Firstname(attr1, attr2):
+	name1 = attr1.name; name2 = attr2.name
+	if "." not in name1 and "." not in name2:
+		if name1[0] == name2[0]: return 1
+	if "." in name1 and "." in name2:
+		if name1.split(".")[-1] == name2.split(".")[-1]:
+			return 1
+	return 0
 
-def is_same_nation(attr1, attr2): # ·µ»ØÊÇ·ñÒ»¸öÃñ×å
-	return 1
 
-TFIDF_PROFESSION = {}
+# è¿”å›æ˜¯å¦ä¸€ä¸ªæ°‘æ— OK
+# NATION = json.load(open("../data/adress/nation.json"))
+def is_same_nation(attr1, attr2):
+	if attr1.nation in attr2.nation or attr2.nation in attr1.nation:
+		return 1
+	nation1 = attr1.nation.split(); nation2 = attr2.nation.split()
+	for n1 in nation1:
+		if n1 in attr2.nation:
+			return 1
+	for n2 in nation2:
+		if n2 in attr1.nation:
+			return 1
+	return 0
+
+
+# TFIDF_PROFESSION = {}
 def load_tfidf_profession():
 	global TFIDF_PROFESSION
 	ftfidf = open("TFIDF_profession")
@@ -165,74 +201,57 @@ def load_tfidf_profession():
 			t = t.split("-")
 			TFIDF_PROFESSION[line[0]]["-".join(t[:-1])] = float(t[-1])
 
-TFIDF_PROFESSION = pickle.load(open("T1.pickle", "rb"))
-print type(TFIDF_PROFESSION.keys()[0])
-print len(TFIDF_PROFESSION)
 
-def similarity_Profession(attr1, attr2): # ·µ»ØÁ½ÈËÖ°ÒµµÄ×î¸ßÏàËÆ¶ÈºÍ×îµÍÏàËÆ¶È
-	cosine = []
+W2V_PROFESSION = pickle.load(open("../data/profession/profession_w2v.pickle", "rb"))
+
+# è¿”å›ä¸¤äººèŒä¸šçš„æœ€é«˜ç›¸ä¼¼åº¦å’Œæœ€ä½ç›¸ä¼¼åº¦ï¼ˆword2vecï¼‰ OK
+def similarity_Profession(attr1, attr2): # è¿”å›ä¸¤äººèŒä¸šçš„æœ€é«˜ç›¸ä¼¼åº¦å’Œæœ€ä½ç›¸ä¼¼åº¦
+	similarity = []
 	pair_profession = [(x, y) for x in attr1.profession for y in attr2.profession]
 	for pro1, pro2 in pair_profession:
-		unigram = list(set(TFIDF_PROFESSION[pro1].keys()).union(set(TFIDF_PROFESSION[pro2].keys())))
-		feature1 = [0] * len(unigram); feature2 = [0] * len(unigram)
-		for index, word in enumerate(unigram):
-			if word in TFIDF_PROFESSION[pro1]:
-				feature1[index] = TFIDF_PROFESSION[pro1][word]
-			if word in TFIDF_PROFESSION[pro2]:
-				feature2[index] = TFIDF_PROFESSION[pro2][word]
-		cosine.append(cosine_similarity(feature1, feature2))
-		print cosine[-1]
-	return (max(cosine), min(cosine))
-
-per1 = attribute()
-per1.setProfession("²©Ê¿Éúµ¼Ê¦µÈ")
-print len(TFIDF_PROFESSION["¼ÒÎñ"])
-# for t in TFIDF_PROFESSION["¼ÒÎñ"]:
-# 	print t, TFIDF_PROFESSION["¼ÒÎñ"][t]
-per2 = attribute()
-per2.setProfession("²©Ê¿Éúµ¼Ê¦")
-t = similarity_Profession(per2, per1)
-print t
+		feature1 = W2V_PROFESSION[unicode(pro1, "utf-8")]; feature2 = W2V_PROFESSION[unicode(pro2, "utf-8")]
+		similarity.append(cosine(feature1, feature2))
+		print similarity[-1]
+	return (max(similarity), min(similarity))
 
 class feature:
 	def __init__(self):
 		self.feature = []
 
-	def gender(self, attr1, attr2): #ĞÔ±ğ
+	def gender(self, attr1, attr2): #æ€§åˆ«
 		self.feature.append(attr1.gender)
 		self.feature.append(attr2.gender)
 
-	def gender_consistent(self, attr1, attr2): # ĞÔ±ğÊÇ·ñÒ»ÖÂ
+	def gender_consistent(self, attr1, attr2): # æ€§åˆ«æ˜¯å¦ä¸€è‡´
 		if attr1.gender == attr2.gender:
 			self.feature.append(1)
 		else:
 			self.feature.append(0)
 
-	def weight_diff(self, attr1, attr2): #ÌåÖØ²î
+	def weight_diff(self, attr1, attr2): #ä½“é‡å·®
 		self.feature.append(attr1.weight - attr2.weight)
 
-	def age_diff(self, attr1, attr2): #ÄêÁä²î
+	def age_diff(self, attr1, attr2): #å¹´é¾„å·®
 		self.feature.append(attr1.birthDate[0] - attr1.birthDate[0])
 
-	def age(self, attr1, attr2): # ÄêÁä·Ö²¼
-		self.feature += [2015 - attr1.birthDate[0], 2015 -
-							attr2.birthDate[0]]
+	def age(self, attr1, attr2): # å¹´é¾„åˆ†å¸ƒ
+		self.feature += [2015 - attr1.birthDate[0], 2015 -	attr2.birthDate[0]]
 
-	def height_diff(self, attr1, attr2): # Éí¸ß²î
+	def height_diff(self, attr1, attr2): # èº«é«˜å·®
 		self.feature.append(attr1.height - attr2.height)
 
-	def name_consistent(self, attr1, attr2): # ĞÕÃûÊÇ·ñÒ»ÖÂ
+	def name_consistent(self, attr1, attr2): # å§“åæ˜¯å¦ä¸€è‡´
 		return 1
 
-	def birthplace(self, attr1, attr2): # ³öÉúµØÊÇ·ñÒ»ÖÂ
+	def birthplace(self, attr1, attr2): # å‡ºç”Ÿåœ°æ˜¯å¦ä¸€è‡´
 		self.feature.append(is_same_Country(attr1.birthPlace, attr2.birthPlace))
 		self.feature.append(is_same_Province(attr1.birthPlace, attr2.birthPlace))
 
-	def nativeplace(self, attr1, attr2): # ¼®¹áÊÇ·ñÒ»ÖÂ
+	def nativeplace(self, attr1, attr2): # ç±è´¯æ˜¯å¦ä¸€è‡´
 		self.feature.append(is_same_Country(attr1.nativePlace, attr2.nativePlace))
 		self.feature.append(is_same_Province(attr1.nativePlace, attr2.nativePlace))
 
-	def firstname(self, attr1, attr2): # ĞÕÊÇ·ñÒ»ÖÂ
+	def firstname(self, attr1, attr2): # å§“æ˜¯å¦ä¸€è‡´
 		self.feature.append(is_same_Firstname(attr1, attr2))
 
 	def nation(self, attr1, attr2):

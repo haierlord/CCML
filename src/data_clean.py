@@ -270,8 +270,22 @@ def func18():
 		if len(line) == 4:
 			fout.write(line[0] + "\t" +  line[-1] + "\n")
 
-
-func18()
+def func19():
+	fin = csv.reader(open("../data/version.0.0.1/attribute.clean.csv"))
+	count = 0
+	attribute = fin.next()
+	dic_attribute = {}
+	for index, t in enumerate(attribute):
+		dic_attribute[t] = index
+	list_attribute = [collections.defaultdict(int) for t in attribute]
+	for line in fin:
+		for index, t in enumerate(line):
+			list_attribute[index][t] += 1
+	for t in list_attribute[-1]:
+		print t, list_attribute[-1][t]
+	print len(list_attribute[-1])
+	print attribute
+func19()
 	
 
 	
