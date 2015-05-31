@@ -1,15 +1,13 @@
-import copy
+from urllib2 import Request, urlopen, URLError, HTTPError
 
-def plus(dic1, dic2):
-	dic3 = copy.copy(dic1)
-	for t in dic2:
-		dic3[t] += dic2[t]
-	return dic3
-	
-	
-dic1 = {1:2,2:3}
-dic2 = {1:5,2:10}
-dic3 = plus(dic1, dic2)
-print dic3
-print dic2
-print dic1
+
+old_url = 'http://rrurl.cn/b1UZuP'
+req = Request(old_url)
+req.add_header('User-agent', "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20130406 Firefox/23.0")
+print dir(req)
+print req.get_header("User-agent")
+response = urlopen(req)
+
+print 'Old url :' + old_url
+print 'Real url :' + response.geturl()
+

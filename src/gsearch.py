@@ -36,7 +36,11 @@ user_agents = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20130406 Fire
 class SearchResult:
 	def __init__(self):
 		self.title = '' 
-		self.content = '' 
+		self.content = ''
+		self.info = ''
+
+	def getInfo(self):
+		return self.info
 
 	def getTitle(self):
 		return self.title
@@ -46,6 +50,9 @@ class SearchResult:
 
 	def getContent(self):
 		return self.content
+
+	def setInfo(self, info):
+		self.info = info
 
 	def setContent(self, content):
 		self.content = content
@@ -89,31 +96,48 @@ class BaiduAPI:
 
 	# extract serach results list from downloaded html file
 	def extractSearchResults_snip(self, html):
+		result = SearchResult()
 		results = list()
 		soup = BeautifulSoup(html)
-		div = soup.find('div', id  = 'content_left')
+		div = soup.find('div', {"class": "text", "id": "sec-content0"})
 		if (type(div) != types.NoneType):
-			lis = div.findAll('div', {'class': 'result c-container '})
+			lis = div.findAll('div', {'class': 'biItemInner'})
 			if(len(lis) > 0):
+				attr = ""
 				for li in lis:
-					result = SearchResult()
-					h3 = li.find('h3', {'class': 't'})
-					if(type(h3) == types.NoneType):
-						continue
-					# extract domain and title from h3 object
-					link = h3.find('a')
-					if (type(link) == types.NoneType):
-						continue
-					title = link.text
-					abst = li.find("div", {"class": "c-abstract"})
-					if (type(abst) == types.NoneType):
-						content = title
-					else:
-						content = abst.text
-					result.setContent(content)
-					result.setTitle(title)
-					results.append(result)
-		return results
+					biTitle = li.find("span", {"class": "biTitle"})
+					if (type(biTitle) != biTitle.NoneType):
+						attr += biTitle.text + "\t"
+					biContent = li.find("div", {"class": "biContent"})
+					if (type(biContent) != biContent.NoneType):
+						attr += biContent.text + "\t"
+				result.setInfo(attr)
+			lis = div.findAll('div', {'class': 'para'})
+			if(len(lis) > 0):
+				paras = ""
+				for li in lis:
+					para = re.sub("<a .+a>|<sup>.+<sup>|\[\d*-?\d*\]", " ", li.text)
+					paras += para + "\t"
+				result.setContent(paras.strip())
+		else:
+			div = soup.find('div', {"class": "body-wrapper feature feature_small starSmall"})
+			lis = div.findAll('div', {'class': 'para'})
+			if(len(lis) > 0):
+				paras = ""
+				for li in lis:
+					para = re.sub("<a .+a>|<sup>.+<sup>|\[\d*-?\d*\]", " ", li.text)
+					paras += para + "\t"
+				result.setContent(paras)
+			lisdt = div.findAll('dt', {'class': 'basicInfo-item name'})
+			lisdd = div.findAll('dd', {'class': 'basicInfo-item value'})
+			if(len(lisdt) > 0):
+				attr = ""
+				for index, dt in enumerate(lisdt):
+					attr += re.sub("\s+", " ", dt.text).strip() + "\t"
+					attr += re.sub("\s+", " ", lisdd[index].text).strip() + "\t"
+				result.setInfo(attr.strip())
+
+		return [result.info, result.content]
 
 	def extractSearchResults_baike(self, html):
 		results = list()
@@ -131,7 +155,6 @@ class BaiduAPI:
 						if len(Dc) == len(Pc):
 							return url_baike
 		return ""
-
 
 	def search_baike(self, query):
 		query  = urllib2.quote(query)
@@ -161,14 +184,11 @@ class BaiduAPI:
 				self.randomSleep()
 				continue
 		return search_results
-	# search web
-	# @param query -> query key words 
-	# @param lang -> language of search results  
-	# @param num -> number of search results to return 
+
 	def search_snip(self, query):
-		query = urllib2.quote(query)
-		search_results = list()
-		url = "http://www.baidu.com.cn/s?wd=" + query + "&cl=3&rn=30"
+		# query = urllib2.quote(query)
+		search_results = ["", ""]#list()
+		url = query
 		#url = '%s/search?hl=%s&num=%d&q=%s' % (base_url, lang, num, query)
 		str = ''
 		retry = 3
@@ -182,7 +202,7 @@ class BaiduAPI:
 				request.add_header('connection','keep-alive')
 				response = urllib2.urlopen(request)
 				html = response.read() 
-				results = self.extractSearchResults(html)
+				results = self.extractSearchResults_snip(html)
 				return results
 			except urllib2.URLError,e:
 				print 'url error:', e
@@ -197,6 +217,77 @@ class BaiduAPI:
 				continue
 		return search_results
 	
+def test():
+	url = "http://baike.baidu.com/view/3643732.htm"
+	api = BaiduAPI()
+	result = api.search_snip(url)
+	info = "" ; content = ""
+	result[1] = re.sub("\s+", " ", result[1])
+	for t in result[0]:
+		try:
+			info += t.encode("gbk")
+		except:
+			continue
+	print info
+	for t in result[1]:
+		try:
+			content += t.encode("gbk")
+		except:
+			continue
+	print content
+	return 1
+
+# test()
+def	catchBaike():
+	fin = open("../data/attribute/attribute_url.all")
+	dic_ = {}
+	dic_info = {}
+	dic_content = {}
+	for line in fin:
+		line = line.strip().split("\t")
+		dic_[line[0]] = line[-1]
+		dic_info[line[0]] = ""
+		dic_content[line[0]] = ""
+	fout1 = open("../data/attribute/attribute.info", "a")
+	fout2 = open("../data/attribute/attribute.content", "a")
+	iter = 0
+	while (iter < 25):
+		iter += 1
+		for name, url in dic_.iteritems():
+			if len(dic_info[name]) >= 4: continue
+			print iter, name,
+			api = BaiduAPI()
+			result = api.search_snip(url)
+			info = ""; content = ""
+			result[1] = re.sub("\s+", " ", result[1])
+			for t in result[0]:
+				try:
+					info += t.encode("gbk")
+				except:
+					continue
+			try:
+				print info[:20]
+			except:
+				print info
+			for t in result[1]:
+				try:
+					content += t.encode("gbk")
+				except:
+					continue
+			dic_info[name] = info; dic_content[name] = content
+			if len(info) >= 4:
+				fout1.write(name + "\t" + info + '\n')
+				fout2.write(name + "\t" + content + '\n')
+	with open("../data/attribute/final.info", "w") as f:
+		for name, info in dic_info.iteritems():
+			f.write(name + "\t" + info + "\n")
+		f.close()
+	with open("../data/attribute/final.content", "w") as f:
+		for name, content in dic_content.iteritems():
+			f.write(name + "\t" + content + "\n")
+
+
+catchBaike()
 
 def main0():
 	professions = "lose3"
@@ -223,26 +314,33 @@ def main0():
 		fout.write("\n")
 
 def main1():
-	fout = open("lose1_attribute", "w")
+	fout = open("../data/attribute/attribute_url.exist", "w")
 	count = 0
-	# api = BaiduAPI()
-	# results = api.search_baike("沙龙")
-	# print results
-	for line in open("lose_attribute"):
-		count += 1
+	dic_lose = {}
+	for line in open("../data/attribute/attribute.clean"):
 		line = line.strip().split("\t")
-		if len(line) == 4:
+		if len(line) != 4:
+			dic_lose[line[3]] = ""
+		# else:
+		# 	dic_lose[line[0]] = line[-1]#"http://baike.baidu.com/view/" + line[1] + ".htm"
+	iter = 0
+	print sum([1 for t in dic_lose if dic_lose[t] == ""])
+	while (iter < 10):
+		for name in dic_lose:
+			if len(dic_lose[name]) > 3: continue
+			print iter, name,
 			api = BaiduAPI()
-			results = api.search_baike(line[-1])
+			result = api.search_baike(name)
 			temp = ""
-			for t in results:
+			for t in result:
 				try:
 					temp1 = t.encode("gbk")
 					temp += temp1
 				except:
 					continue
-			temp = "\t".join(line + [temp])
-			fout.write(temp + '\n')
-			print count, line[-1], results
+			print temp
+			dic_lose[name] = temp.strip()
+		iter += 1
+	for t in dic_lose:
+		fout.write(t + '\t' + dic_lose[t] + '\n')
 
-main1()

@@ -109,11 +109,15 @@ def func7(): # task2.TrainSOSet 去重
 	
 	
 def func8(): # task1。assist 去除新闻名 --> clean
-	assistfile = codecs.open("../../data/version.0.0.1/attribute_clean", encoding = "utf-8")
-	fout = codecs.open("../../data/version.0.0.1/attribute.clean","w")
+	assistfile = codecs.open("../data/attribute/attribute", encoding = "utf-8")
+	fout = codecs.open("../data/attribute/attribute.clean","w")
 	dic_ = {}
 	for line in assistfile:
+		line1 = line.split("\t")
 		temp = ""
+		if line1[0] in dic_:
+			continue
+		dic_[line1[0]] = 1
 		for t in line:
 			try:
 				temp1 = t.encode("gbk")
@@ -123,7 +127,6 @@ def func8(): # task1。assist 去除新闻名 --> clean
 		#line = " ".join(temp.split("\t")[:3])
 		if temp in dic_:
 			continue
-		dic_[temp] = 1
 		fout.write(temp.strip() + "\n")	
 		
 
@@ -285,7 +288,7 @@ def func19():
 		print t, list_attribute[-1][t]
 	print len(list_attribute[-1])
 	print attribute
-func19()
+func8()
 	
 
 	

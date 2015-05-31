@@ -139,6 +139,8 @@ class attribute:
 		self.deathDate = deathDate
 
 address = json.load(open("../data/address/address.json"))
+W2V_PROFESSION = pickle.load(open("../data/profession/profession_w2v.pickle", "rb"))
+
 
 # 是否是同一个国家 OK
 def is_same_Country(place1, place2):
@@ -189,7 +191,6 @@ def is_same_nation(attr1, attr2):
 			return 1
 	return 0
 
-
 # TFIDF_PROFESSION = {}
 def load_tfidf_profession():
 	global TFIDF_PROFESSION
@@ -202,7 +203,6 @@ def load_tfidf_profession():
 			TFIDF_PROFESSION[line[0]]["-".join(t[:-1])] = float(t[-1])
 
 
-W2V_PROFESSION = pickle.load(open("../data/profession/profession_w2v.pickle", "rb"))
 
 # 返回两人职业的最高相似度和最低相似度（word2vec） OK
 def similarity_Profession(attr1, attr2): # 返回两人职业的最高相似度和最低相似度
